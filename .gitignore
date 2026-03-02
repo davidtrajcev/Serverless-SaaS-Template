@@ -1,17 +1,12 @@
 # --- Terraform ---
 **/.terraform/*
-*.tfstate
-*.tfstate.*
-*.tfplan
-*.tfvars
-*.tfvars.json
-crash.log
-crash.*.log
-.terraform.lock.hcl
-override.tf
-override.tf.json
-*_override.tf
-*_override.tf.json
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+**/*.tfplan
+**/*.plan
 
 # Terraform CLI local config (can contain creds)
 .terraformrc
@@ -21,7 +16,7 @@ terraform.rc
 **/*.tfplan
 **/*.plan
 
-# --- Bootstrap local state (keep OUT of repo) ---
+# --- Bootstrap local state ---
 infra/bootstrap/terraform.tfstate
 infra/bootstrap/terraform.tfstate.*
 infra/bootstrap/.terraform/

@@ -1,7 +1,3 @@
-locals {
-  name_prefix = "saas-dev"
-}
-
 data "aws_region" "current" {}
 
 resource "aws_cognito_user_pool" "this" {
