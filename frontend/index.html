@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Serverless SaaS Template</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; max-width: 900px; margin: 40px auto; padding: 0 16px; }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input { padding: 10px; min-width: 260px; }
+    button { padding: 10px 14px; cursor: pointer; }
+    pre { background: #f6f6f6; padding: 12px; overflow: auto; }
+    .muted { opacity: 0.7; }
+  </style>
+</head>
+<body>
+  <h1>Serverless SaaS Template</h1>
+  <p class="muted">Cognito Hosted UI login → calls API Gateway (JWT) → Lambda → DynamoDB (+ SQS worker in Phase 6).</p>
+
+  <div class="row" style="margin: 16px 0;">
+    <button id="loginBtn">Login</button>
+    <button id="logoutBtn">Logout</button>
+  </div>
+
+  <h3>Session</h3>
+  <pre id="session"></pre>
+
+  <h3>Create item</h3>
+  <div class="row">
+    <input id="text" placeholder="Write something…" />
+    <button id="createBtn">Create</button>
+  </div>
+
+  <h3>Items</h3>
+  <button id="refreshBtn">Refresh</button>
+  <pre id="items"></pre>
+
+<script>
+  const CONFIG = {
+    apiBase: "${API_BASE}",
+    hostedUiBase: "${HOSTED_UI_BASE}",
+    clientId: "${COGNITO_CLIENT_ID}",
+    redirectUri: "${REDIRECT_URI}"
+    };
+
+  function setSessionText(obj) {
+    document.getElementById("session").textContent = JSON.stringify(obj, null, 2);
+  }
+
+  function parseHashTokens() {
+    // Cognito implicit flow returns tokens in URL hash
+    const hash = window.location.hash.startsWith("#") ? window.location.hash.slice(1) : "";
+    const params = new URLSearchParams(hash);
+    const access_token = params.get("access_token");
+    const id_token = params.get("id_token");
+    const expires_in = params.get("expires_in");
+    const token_type = params.get("token_type");
+    if (access_token) {
+      const session = {
+        access_token, id_token, expires_in: Number(expires_in || 0),
+        token_type, obtained_at: Date.now()
+      };
+      sessionStorage.setItem("session", JSON.stringify(session));
+      // Clean URL
+      history.replaceState(null, "", window.location.pathname);
+      return session;
+    }
+    return null;
+  }
+
+  function getSession() {
+    const s = sessionStorage.getItem("session");
+    return s ? JSON.parse(s) : null;
+  }
+
+  function logout() {
+    sessionStorage.removeItem("session");
+    // redirect to Cognito logout
+    const url = new URL(CONFIG.hostedUiBase + "/logout");
+    url.searchParams.set("client_id", CONFIG.clientId);
+    url.searchParams.set("logout_uri", CONFIG.redirectUri);
+    window.location.href = url.toString();
+  }
+
+  function login() {
+    const url = new URL(CONFIG.hostedUiBase + "/oauth2/authorize");
+    url.searchParams.set("client_id", CONFIG.clientId);
+    url.searchParams.set("response_type", "token"); // implicit
+    url.searchParams.set("scope", "openid email profile");
+    url.searchParams.set("redirect_uri", CONFIG.redirectUri);
+    window.location.href = url.toString();
+  }
+
+  async function apiCall(path, method="GET", body=null) {
+    const session = getSession();
+    if (!session?.access_token) throw new Error("Not logged in");
+
+    const res = await fetch(CONFIG.apiBase + path, {
+      method,
+      headers: {
+        "Authorization": "Bearer " + session.access_token,
+        "content-type": "application/json"
+      },
+      body: body ? JSON.stringify(body) : null
+    });
+
+    const text = await res.text();
+    let json;
+    try { json = JSON.parse(text); } catch { json = { raw: text }; }
+    if (!res.ok) throw new Error(res.status + " " + JSON.stringify(json));
+    return json;
+  }
+
+  async function refreshItems() {
+    const data = await apiCall("/items");
+    document.getElementById("items").textContent = JSON.stringify(data, null, 2);
+  }
+
+  async function createItem() {
+    const text = document.getElementById("text").value.trim();
+    if (!text) return;
+    await apiCall("/items", "POST", { text });
+    document.getElementById("text").value = "";
+    // show status change PENDING->DONE after worker runs
+    await refreshItems();
+    setTimeout(refreshItems, 2000);
+  }
+
+  // Wire UI
+  document.getElementById("loginBtn").onclick = login;
+  document.getElementById("logoutBtn").onclick = logout;
+  document.getElementById("refreshBtn").onclick = refreshItems;
+  document.getElementById("createBtn").onclick = createItem;
+
+  // Bootstrap
+  const newSession = parseHashTokens();
+  const session = newSession || getSession();
+  setSessionText({
+    logged_in: !!session?.access_token,
+    redirectUri: CONFIG.redirectUri,
+    apiBase: CONFIG.apiBase,
+    hostedUiBase: CONFIG.hostedUiBase
+  });
+
+  if (session?.access_token) refreshItems().catch(e => {
+    document.getElementById("items").textContent = String(e);
+  });
+</script>
+</body>
+</html>
