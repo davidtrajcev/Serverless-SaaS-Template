@@ -2,15 +2,13 @@ name: terraform-dev
 
 on:
   pull_request:
-    paths:
-      - "infra/**"
+    paths: ["infra/**"]
   push:
     branches: ["main"]
-    paths:
-      - "infra/**"
+    paths: ["infra/**"]
 
 permissions:
-  id-token: write   # required for OIDC
+  id-token: write
   contents: read
   pull-requests: write
 
@@ -24,11 +22,9 @@ jobs:
   plan:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: "1.6.6"
 
