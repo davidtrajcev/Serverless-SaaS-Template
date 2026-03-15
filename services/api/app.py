@@ -6,6 +6,8 @@ import boto3
 
 ddb = boto3.client("dynamodb")
 TABLE = os.environ["TABLE_NAME"]
+sqs = boto3.client("sqs")
+QUEUE_URL = os.environ["QUEUE_URL"]
 
 def _resp(code, body):
     return {
@@ -48,9 +50,16 @@ def handler(event, context):
                 "item_id": {"S": item_id},
                 "created_at": {"N": str(now)},
                 "text": {"S": text},
+                "status": {"S": "PENDING"},
             },
         )
-        return _resp(201, {"item_id": item_id})
+
+        sqs.send_message(
+            QueueUrl=QUEUE_URL,
+            MessageBody=json.dumps({"tenant_id": tenant, "item_id": item_id}),
+        )
+
+        return _resp(201, {"item_id": item_id, "status": "PENDING"})
 
     if path == "/items" and method == "GET":
         resp = ddb.query(
@@ -68,6 +77,7 @@ def handler(event, context):
                 "item_id": it["item_id"]["S"],
                 "created_at": int(it["created_at"]["N"]),
                 "text": it["text"]["S"],
+                "status": it.get("status", {"S": "UNKNOWN"})["S"],
             })
         return _resp(200, {"items": items})
 

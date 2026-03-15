@@ -27,17 +27,24 @@ resource "aws_iam_role_policy" "api_ddb" {
   role = aws_iam_role.api_lambda_role.name
   policy = jsonencode({
     Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Action = [
-        "dynamodb:PutItem",
-        "dynamodb:Query",
-        "dynamodb:GetItem",
-        "dynamodb:UpdateItem",
-        "dynamodb:DeleteItem"
-      ],
-      Resource = [aws_dynamodb_table.app.arn]
-    }]
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "dynamodb:PutItem",
+          "dynamodb:Query",
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ],
+        Resource = [aws_dynamodb_table.app.arn]
+      },
+      {
+        Effect   = "Allow",
+        Action   = ["sqs:SendMessage"],
+        Resource = [aws_sqs_queue.jobs.arn]
+      }
+    ]
   })
 }
 
@@ -61,6 +68,7 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       TABLE_NAME = aws_dynamodb_table.app.name
+      QUEUE_URL  = aws_sqs_queue.jobs.url
     }
   }
 
