@@ -1,0 +1,48 @@
+# --- Terraform ---
+**/.terraform/*
+**/.terraform.lock.hcl
+**/*.tfstate
+**/*.tfstate.*
+**/*.tfvars
+**/*.tfvars.json
+**/*.tfplan
+**/*.plan
+
+# Terraform CLI local config (can contain creds)
+.terraformrc
+terraform.rc
+
+# If you ever store plan files locally
+**/*.tfplan
+**/*.plan
+
+# --- Bootstrap local state ---
+infra/bootstrap/terraform.tfstate
+infra/bootstrap/terraform.tfstate.*
+infra/bootstrap/.terraform/
+infra/environments/dev/terraform.tfvars
+
+# --- Python ---
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.venv/
+**/venv/
+**/.env
+**/.env.*
+
+# --- Build / packaging artifacts ---
+**/build/
+**/dist/
+**/*.zip
+
+# --- Logs ---
+**/*.log
+
+# --- IDE / OS ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

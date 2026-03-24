@@ -1,0 +1,501 @@
+<!doctype html>
+<html>
+<head>
+  <link rel="icon" href="data:,">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Serverless SaaS Template</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --card:#121a33;
+      --muted:#9aa4c2;
+      --text:#e8ecff;
+      --border:rgba(255,255,255,.08);
+      --accent:#7c5cff;
+      --accent2:#22c55e;
+      --danger:#ef4444;
+      --warn:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      min-height: 100vh;
+      background: radial-gradient(1200px 600px at 20% -10%, rgba(124,92,255,.35), transparent 60%),
+                  radial-gradient(900px 500px at 90% 0%, rgba(34,197,94,.18), transparent 55%),
+                  var(--bg);
+      color: var(--text);
+      max-width: 980px;
+      margin: 48px auto;
+      padding: 0 18px;
+    }
+    a{color:inherit}
+    header{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:16px;
+      margin-bottom: 18px;
+    }
+    .title h1{margin:0; font-size: 28px; letter-spacing:.2px}
+    .title p{margin:8px 0 0; color:var(--muted); line-height:1.4}
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 10px; border:1px solid var(--border); border-radius:999px;
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap: 14px;
+    }
+    @media (max-width: 860px){
+      .grid{grid-template-columns: 1fr}
+      header{flex-direction:column}
+    }
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .card h3{margin: 0 0 10px; font-size: 15px; color: rgba(232,236,255,.92)}
+    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center}
+    button{
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button.primary{
+      background: linear-gradient(135deg, rgba(124,92,255,.95), rgba(124,92,255,.65));
+      border-color: rgba(124,92,255,.55);
+    }
+    button.success{
+      background: linear-gradient(135deg, rgba(34,197,94,.9), rgba(34,197,94,.55));
+      border-color: rgba(34,197,94,.55);
+    }
+    button.ghost{
+      background: rgba(255,255,255,.02);
+    }
+    button:disabled{
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    input{
+      flex: 1;
+      min-width: 240px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: rgba(0,0,0,.15);
+      color: var(--text);
+      outline: none;
+    }
+    input::placeholder{color: rgba(154,164,194,.7)}
+    pre{
+      background: rgba(0,0,0,.18);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      overflow: auto;
+      margin: 0;
+      color: rgba(232,236,255,.92);
+    }
+    .small{font-size: 13px; color: var(--muted)}
+    .muted { color: var(--muted); }
+    .badge{
+      display:inline-flex; align-items:center; gap:6px;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      border:1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      color: var(--muted);
+    }
+    .badge.ok{border-color: rgba(34,197,94,.35); color: rgba(34,197,94,.95)}
+    .badge.warn{border-color: rgba(245,158,11,.35); color: rgba(245,158,11,.95)}
+    .badge.err{border-color: rgba(239,68,68,.35); color: rgba(239,68,68,.95)}
+    .items{
+      display:flex; flex-direction:column; gap:10px;
+    }
+    .item{
+      padding: 12px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+      display:flex; justify-content:space-between; gap:12px; align-items:flex-start;
+    }
+    .item .meta{color: var(--muted); font-size: 12px; margin-top: 6px}
+    .toast{
+      position: fixed;
+      bottom: 16px; right: 16px;
+      background: rgba(18,26,51,.92);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 10px 12px;
+      color: var(--text);
+      box-shadow: 0 10px 30px rgba(0,0,0,.35);
+      display:none;
+      max-width: 360px;
+    }
+    .toast.show{display:block}
+  </style>
+</head>
+<body>
+    <header>
+      <div class="title">
+        <h1>Serverless SaaS Template</h1>
+        <p>
+          Cognito login → JWT-protected API Gateway → Lambda → DynamoDB<br/>
+          Async processing via SQS worker. Drift detection + alarms included.
+        </p>
+      </div>
+      <div class="pill" id="statusPill">Status: <span id="statusText">Unknown</span></div>
+    </header>
+  
+    <div class="grid">
+      <section class="card">
+        <h3>Actions</h3>
+        <div class="row" style="margin-bottom: 10px;">
+          <!-- Signed OUT -->
+          <div id="authSignedOut" class="row">
+              <button class="primary" id="loginBtn">Login</button>
+              <button class="ghost" id="signupBtn">Sign up</button>
+              <span class="small">Tip: first time? Sign up</span>
+          </div>
+
+          <!-- Signed IN -->
+          <div id="authSignedIn" class="row" style="display:none;">
+            <button class="ghost" id="logoutBtn">Logout</button>
+          </div>
+        </div>
+  
+        <div id="createRow">
+            <h3>Create item</h3>
+            <div class="row">
+              <input id="text" placeholder="Write something…" />
+              <button class="success" id="createBtn">Create</button>
+              <button class="ghost" id="refreshBtn">Refresh</button>
+            </div>
+            <p class="small" style="margin:10px 0 0;">
+              Create triggers async processing: <span class="badge warn">PENDING</span> → <span class="badge ok">DONE</span>
+            </p>
+        </div>
+      </section>
+  
+      <section class="card">
+        <h3>Session</h3>
+        <pre id="session" class="small"></pre>
+      </section>
+  
+      <section class="card" id="itemsCard" style="grid-column: 1 / -1;">
+        <div class="row" style="justify-content: space-between;">
+          <h3 style="margin:0;">Items</h3>
+          <span class="small" id="itemsCount"></span>
+        </div>
+        <div id="items" class="items" style="margin-top: 10px;"></div>
+      </section>
+    </div>
+  
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Terraform will template these values in when uploading to S3
+        const CONFIG = {
+          apiBase: "${API_BASE}",
+          hostedUiBase: "${HOSTED_UI_BASE}",
+          clientId: "${COGNITO_CLIENT_ID}",
+          redirectUri: "${REDIRECT_URI}"
+        };
+      
+        function getSession() {
+          const s = sessionStorage.getItem("session");
+          return s ? JSON.parse(s) : null;
+        }
+      
+        function toast(msg) {
+          const el = document.getElementById("toast");
+          el.textContent = msg;
+          el.classList.add("show");
+          setTimeout(() => el.classList.remove("show"), 2600);
+        }
+      
+        function escapeHtml(s) {
+          return String(s).replace(/[&<>"']/g, (c) => ({
+            "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+          }[c]));
+        }
+      
+        function setSessionText(obj) {
+          document.getElementById("session").textContent = JSON.stringify(obj, null, 2);
+      
+          const statusText = document.getElementById("statusText");
+          const pill = document.getElementById("statusPill");
+          if (obj.logged_in) {
+            statusText.textContent = "Logged in";
+            pill.style.borderColor = "rgba(34,197,94,.35)";
+            pill.style.color = "rgba(34,197,94,.95)";
+          } else {
+            statusText.textContent = "Logged out";
+            pill.style.borderColor = "rgba(245,158,11,.35)";
+            pill.style.color = "rgba(245,158,11,.95)";
+          }
+        }
+
+        function logout() {
+          sessionStorage.removeItem("session");
+          sessionStorage.removeItem("pkce_verifier");
+      
+          const url = new URL(CONFIG.hostedUiBase + "/logout");
+          url.searchParams.set("client_id", CONFIG.clientId);
+          url.searchParams.set("logout_uri", CONFIG.redirectUri);
+          window.location.href = url.toString();
+        }
+
+        function setAuthUi(isLoggedIn) {
+            document.getElementById("authSignedOut").style.display = isLoggedIn ? "none" : "flex";
+            document.getElementById("authSignedIn").style.display  = isLoggedIn ? "flex" : "none";
+
+            const appControls = document.getElementById("tenantSelect")?.closest(".row");
+            if (appControls) appControls.style.display = isLoggedIn ? "flex" : "none";
+        }
+      
+        // ---- PKCE helpers ----
+        function base64UrlEncode(arr) {
+          return btoa(String.fromCharCode(...new Uint8Array(arr)))
+            .replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        }
+      
+        async function sha256(str) {
+          const enc = new TextEncoder();
+          const data = enc.encode(str);
+          return await crypto.subtle.digest("SHA-256", data);
+        }
+      
+        function randomString(length = 64) {
+          const arr = new Uint8Array(length);
+          crypto.getRandomValues(arr);
+          return base64UrlEncode(arr);
+        }
+
+        function setSelectedTenant(id) {
+          sessionStorage.setItem("tenant_id", id || "");
+        }
+
+        function getSelectedTenant() {
+          return sessionStorage.getItem("tenant_id") || "";
+        }
+                
+        async function buildPkce() {
+          const verifier = randomString(64);
+          const challenge = base64UrlEncode(await sha256(verifier));
+          sessionStorage.setItem("pkce_verifier", verifier);
+          return { verifier, challenge };
+        }
+      
+        async function login() {
+            const { challenge } = await buildPkce();
+
+            const url = new URL(CONFIG.hostedUiBase + "/oauth2/authorize");
+            url.searchParams.set("client_id", CONFIG.clientId);
+            url.searchParams.set("response_type", "code");
+            url.searchParams.set("scope", "openid email profile");
+            url.searchParams.set("redirect_uri", CONFIG.redirectUri);
+            url.searchParams.set("code_challenge_method", "S256");
+            url.searchParams.set("code_challenge", challenge);
+
+            window.location.href = url.toString();
+        }
+
+        async function signup() {
+            const { challenge } = await buildPkce();
+
+            // Hosted UI signup page
+            const url = new URL(CONFIG.hostedUiBase + "/oauth2/authorize"); 
+            url.searchParams.set("client_id", CONFIG.clientId);
+            url.searchParams.set("response_type", "code");
+            url.searchParams.set("scope", "openid email profile");
+            url.searchParams.set("redirect_uri", CONFIG.redirectUri);
+            url.searchParams.set("code_challenge_method", "S256");
+            url.searchParams.set("code_challenge", challenge);
+
+            window.location.href = url.toString();
+        }
+                            
+        async function exchangeCodeForTokens(code) {
+          const verifier = sessionStorage.getItem("pkce_verifier");
+          if (!verifier) throw new Error("Missing PKCE verifier in sessionStorage");
+      
+          const params = new URLSearchParams();
+          params.set("grant_type", "authorization_code");
+          params.set("client_id", CONFIG.clientId);
+          params.set("code", code);
+          params.set("redirect_uri", CONFIG.redirectUri);
+          params.set("code_verifier", verifier);
+      
+          const res = await fetch(CONFIG.hostedUiBase + "/oauth2/token", {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: params.toString()
+          });
+      
+          if (!res.ok) throw new Error("Token exchange failed: " + res.status);
+          const data = await res.json();
+      
+          const session = {
+            access_token: data.access_token,
+            id_token: data.id_token,
+            refresh_token: data.refresh_token,
+            expires_in: data.expires_in,
+            token_type: data.token_type,
+            obtained_at: Date.now()
+          };
+      
+          sessionStorage.setItem("session", JSON.stringify(session));
+          sessionStorage.removeItem("pkce_verifier");
+          return session;
+        }
+      
+        async function handleAuthRedirect() {
+          const url = new URL(window.location.href);
+          const code = url.searchParams.get("code");
+          if (!code) return null;
+      
+          const session = await exchangeCodeForTokens(code);
+      
+          url.searchParams.delete("code");
+          url.searchParams.delete("state");
+          history.replaceState(null, "", url.pathname);
+      
+          return session;
+        }
+      
+        // ---- API helpers ----
+        async function apiCall(path, method = "GET", body = null) {
+         const session = getSession();
+         if (!session?.access_token) throw new Error("Not logged in");
+
+         const headers = {
+             "Authorization": "Bearer " + session.access_token,
+             "content-type": "application/json"
+         };
+
+         // Add tenant header for tenant-scoped endpoints (like /items)
+         const tenantId = getSelectedTenant();
+         if (tenantId && path.startsWith("/items")) {
+             headers["X-Tenant-Id"] = tenantId;
+         }
+
+         const res = await fetch(CONFIG.apiBase + path, {
+             method,
+             headers,
+             body: body ? JSON.stringify(body) : null
+         });
+
+         const text = await res.text();
+         let json;
+         try { json = JSON.parse(text); } catch { json = { raw: text }; }
+
+         if (!res.ok) throw new Error(res.status + " " + JSON.stringify(json));
+         return json;
+        }
+      
+        async function refreshItems() {
+          const data = await apiCall("/items");
+          const items = data.items || [];
+      
+          document.getElementById("itemsCount").textContent = `$${items.length} item(s)`;
+          const root = document.getElementById("items");
+          root.innerHTML = "";
+      
+          if (!items.length) {
+            root.innerHTML = `<div class="small muted">No items yet. Create one to see async processing.</div>`;
+            return;
+          }
+      
+          for (const it of items) {
+            const status = (it.status || "UNKNOWN").toUpperCase();
+            const badgeClass =
+              status === "DONE" ? "ok" :
+              status === "PENDING" ? "warn" :
+              "err";
+      
+            const created = it.created_at ? new Date(it.created_at * 1000).toLocaleString() : "";
+      
+            const div = document.createElement("div");
+            div.className = "item";
+            div.innerHTML = `
+                <div>
+                    <div style="font-weight:700;">$${escapeHtml(it.text || "")}</div>
+                    <div class="meta">$${escapeHtml(it.item_id || "")} • $${escapeHtml(created)}</div>
+                </div>
+                <div class="badge $${badgeClass}">$${status}</div>
+              `;
+            root.appendChild(div);
+          }
+        }
+      
+        async function createItem() {
+            const text = document.getElementById("text").value.trim();
+            if (!text) return;
+
+            await apiCall("/items", "POST", { text }).catch(e => { throw e; });
+
+            document.getElementById("text").value = "";
+            toast("Created item. Processing…");
+            await refreshItems();
+            setTimeout(() => refreshItems().catch(() => {}), 2000);
+        }
+                
+        // ---- Wire UI (once) ----
+        const loginBtn  = document.getElementById("loginBtn");
+        const signupBtn = document.getElementById("signupBtn");
+        const logoutBtn = document.getElementById("logoutBtn");
+
+        const refreshBtn = document.getElementById("refreshBtn");
+        const createBtn  = document.getElementById("createBtn");
+
+        // Only bind if the element exists in the DOM
+        if (loginBtn)  loginBtn.onclick  = () => login().catch(e => toast(String(e)));
+        if (signupBtn) signupBtn.onclick = () => signup().catch(e => toast(String(e)));
+        if (logoutBtn) logoutBtn.onclick = () => logout();
+
+        if (refreshBtn) refreshBtn.onclick = () => refreshItems().catch(e => toast(String(e)));
+        if (createBtn)  createBtn.onclick  = () => createItem().catch(e => toast(String(e)));
+            
+        // ---- Startup (once) ----
+        (async () => {
+            const newSession = await handleAuthRedirect();
+            const session = newSession || getSession();
+
+            setSessionText({
+                logged_in: !!session?.access_token,
+                tenant_id: tenants[0]?.tenant_id || null,
+                role: tenants[0]?.role || null,
+                redirectUri: CONFIG.redirectUri,
+                apiBase: CONFIG.apiBase,
+                hostedUiBase: CONFIG.hostedUiBase
+            });
+
+            setAuthUi(!!session?.access_token);
+            if (!session?.access_token) return;
+
+            const me = await apiCall("/me").catch(e => { toast(String(e)); return null; });
+            if (!me) return;
+
+            // Auto-select the tenant returned from /me
+            const tenants = me.tenants || [];
+            if (tenants.length) {
+                setSelectedTenant(tenants[0].tenant_id);
+            }
+
+            refreshItems().catch(e => toast(String(e)));
+        })();
+      </script>
+</body>
+</html>
